@@ -1,0 +1,176 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model User {
+    id        String     @id @default(uuid())
+    email     String     @unique
+    username  String     @unique
+    password  String
+    fullName  String?
+    avatarUrl String?
+    status    UserStatus @default(OFFLINE)
+    createdAt DateTime   @default(now())
+    updatedAt DateTime   @updatedAt
+
+    // Relations
+    workspaces       WorkspaceMember[]
+    channels         ChannelMember[]
+    messages         Message[]
+    reactions        MessageReaction[]
+    sentMessages     DirectMessage[]   @relation("SentMessages")
+    receivedMessages DirectMessage[]   @relation("ReceivedMessages")
+    files            File[]
+
+    @@map("users")
+}
+
+model Workspace {
+    id        String   @id @default(uuid())
+    name      String
+    iconUrl   String?
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    // Relations
+    members  WorkspaceMember[]
+    channels Channel[]
+
+    @@map("workspaces")
+}
+
+model Channel {
+    id          String   @id @default(uuid())
+    name        String
+    description String?
+    isPrivate   Boolean  @default(false)
+    workspaceId String
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+
+    // Relations
+    workspace Workspace       @relation(fields: [workspaceId], references: [id])
+    members   ChannelMember[]
+    messages  Message[]
+
+    @@map("channels")
+}
+
+model Message {
+    id             String                       @id @default(uuid())
+    content        String
+    channelId      String
+    userId         String
+    threadParentId String?
+    edited         Boolean                      @default(false)
+    createdAt      DateTime                     @default(now())
+    updatedAt      DateTime                     @updatedAt
+    vector         Unsupported("vector(1536)")?
+
+    // Relations
+    channel       Channel           @relation(fields: [channelId], references: [id])
+    user          User              @relation(fields: [userId], references: [id])
+    parentMessage Message?          @relation("ThreadReplies", fields: [threadParentId], references: [id])
+    replies       Message[]         @relation("ThreadReplies")
+    reactions     MessageReaction[]
+    files         File[]
+
+    @@map("messages")
+}
+
+model WorkspaceMember {
+    id          String     @id @default(uuid())
+    workspaceId String
+    userId      String
+    role        MemberRole @default(MEMBER)
+    createdAt   DateTime   @default(now())
+    updatedAt   DateTime   @updatedAt
+
+    // Relations
+    workspace Workspace @relation(fields: [workspaceId], references: [id])
+    user      User      @relation(fields: [userId], references: [id])
+
+    @@unique([workspaceId, userId])
+    @@map("workspace_members")
+}
+
+model ChannelMember {
+    id        String   @id @default(uuid())
+    channelId String
+    userId    String
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    // Relations
+    channel Channel @relation(fields: [channelId], references: [id])
+    user    User    @relation(fields: [userId], references: [id])
+
+    @@unique([channelId, userId])
+    @@map("channel_members")
+}
+
+model MessageReaction {
+    id        String   @id @default(uuid())
+    messageId String
+    userId    String
+    emoji     String
+    createdAt DateTime @default(now())
+
+    // Relations
+    message Message @relation(fields: [messageId], references: [id])
+    user    User    @relation(fields: [userId], references: [id])
+
+    @@unique([messageId, userId, emoji])
+    @@map("message_reactions")
+}
+
+model DirectMessage {
+    id        String   @id @default(uuid())
+    content   String
+    fromId    String
+    toId      String
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    // Relations
+    from User @relation("SentMessages", fields: [fromId], references: [id])
+    to   User @relation("ReceivedMessages", fields: [toId], references: [id])
+
+    @@map("direct_messages")
+}
+
+model File {
+    id        String   @id @default(uuid())
+    filename  String
+    path      String
+    mimeType  String
+    size      Int
+    userId    String
+    messageId String?
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    // Relations
+    user    User     @relation(fields: [userId], references: [id])
+    message Message? @relation(fields: [messageId], references: [id])
+
+    @@map("files")
+}
+
+enum UserStatus {
+    ONLINE
+    OFFLINE
+    AWAY
+    DO_NOT_DISTURB
+}
+
+enum MemberRole {
+    OWNER
+    ADMIN
+    MEMBER
+}
