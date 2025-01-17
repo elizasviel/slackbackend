@@ -14,6 +14,7 @@ import path from "path";
 import messageRoutes from "./routes/message.routes";
 import directMessageRoutes from "./routes/directMessage.routes";
 import searchRoutes from "./routes/search.routes";
+import aiRoutes from "./routes/ai.routes";
 
 dotenv.config();
 
@@ -45,4 +46,5 @@ app.use("/api/files", fileRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/messages/direct", directMessageRoutes);
 app.use("/api/search", searchRoutes);
+app.use("/api/ai", aiRoutes);
 export { prisma };
